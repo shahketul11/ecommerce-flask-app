@@ -1,20 +1,35 @@
 version: 0.2
 
+env:
+  variables:
+    ECR_REGISTRY: "484907526019.dkr.ecr.us-east-1.amazonaws.com"
+    IMAGE_NAME: "shah-flask-app"
+    IMAGE_TAG: "latest"
+    CONTAINER_NAME: "shah-container"
+
 phases:
+  install:
+    commands:
+      - echo Installing dependencies...
+      - pip install --upgrade pip
+      - echo Install phase completed
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 484907526019.dkr.ecr.us-east-1.amazonaws.com
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
   build:
     commands:
       - echo Build started on `date`
-      - docker build -t ecommerce-app .
-      - docker tag ecommerce-app:latest 484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest
+      - docker build -t $IMAGE_NAME .
+      - docker tag $IMAGE_NAME:$IMAGE_TAG $ECR_REGISTRY/ecommerce-ap:$IMAGE_TAG
   post_build:
     commands:
-      - echo Pushing image...
-      - docker push 484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest
-      - printf '[{\"name\":\"app\",\"imageUri\":\"484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest\"}]' > imagedefinitions.json
+      - echo Pushing the Docker image...
+      - docker push $ECR_REGISTRY/ecommerce-ap:$IMAGE_TAG
+      - echo Generating imagedefinitions.json...
+      - printf "[{\"name\":\"$CONTAINER_NAME\",\"imageUri\":\"$ECR_REGISTRY/ecommerce-ap:$IMAGE_TAG\"}]" > imagedefinitions.json
+      - echo Build completed on `date`
 
 artifacts:
-  files: imagedefinitions.json
+  files:
+    - imagedefinitions.json
