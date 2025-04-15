@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  CloudFormation Template to deploy a Flask Docker app to ECS Fargate using CodePipeline + ALB + CodeBuild
+Description: Deploy a Flask Docker app to ECS Fargate using CodePipeline + ALB + CodeBuild
 
 Parameters:
   GitHubRepo:
     Type: String
+    Default: shahketul11/ecommerce-flask-app
     Description: GitHub repository (e.g., ketulshah11/ecommerce-flask-app)
   GitHubBranch:
     Type: String
@@ -13,13 +13,13 @@ Parameters:
   GitHubToken:
     Type: String
     NoEcho: true
-    Description: GitHub Personal Access Token (store securely in Secrets Manager)
+    Description: GitHub Personal Access Token
   ContainerImage:
     Type: String
-    Description: Docker Hub Image (e.g., ketulshah11/ecommerce-app:latest)
+    Default: ketulshah11/ecommerce-app:latest
+    Description: Docker Hub Image to deploy
 
 Resources:
-
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -162,6 +162,96 @@ Resources:
         - TargetGroupArn: !Ref TargetGroup
           ContainerName: app
           ContainerPort: 5000
+
+  PipelineBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-pipeline-artifacts"
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: FlaskAppBuild
+      Source:
+        Type: GITHUB
+        Location: !Sub https://github.com/${GitHubRepo}.git
+        GitCloneDepth: 1
+        BuildSpec: buildspec.yml
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: true
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref PipelineBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHubSource
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: 1
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Select [0, !Split ["/", !Ref GitHubRepo]]
+                Repo: !Select [1, !Split ["/", !Ref GitHubRepo]]
+                Branch: !Ref GitHubBranch
+                OAuthToken: !Ref GitHubToken
+              RunOrder: 1
+
+        - Name: Build
+          Actions:
+            - Name: DockerBuild
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              InputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
 
 Outputs:
   LoadBalancerDNS:
