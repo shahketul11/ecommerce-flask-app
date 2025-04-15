@@ -8,11 +8,11 @@ phases:
   build:
     commands:
       - echo Build started on `date`
-      - docker build -t ecommerce-app .
+      - docker build -t ecommerce-app .                      # 👈 CORRECT HERE
       - docker tag ecommerce-app:latest 484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest
   post_build:
     commands:
-      - echo Pushing the Docker image...
+      - echo Pushing image...
       - docker push 484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest
       - echo '[{"name":"shah-container","imageUri":"484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest"}]' > imagedefinitions.json
 
