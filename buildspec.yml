@@ -5,19 +5,16 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 484907526019.dkr.ecr.us-east-1.amazonaws.com
-
   build:
     commands:
       - echo Build started on `date`
-      - ls -la   # just to verify Dockerfile exists
-      - docker build -t ecommerce-app .    
+      - docker build -t ecommerce-app .
       - docker tag ecommerce-app:latest 484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest
-
   post_build:
     commands:
-      - echo Pushing image...
+      - echo Pushing the Docker image...
       - docker push 484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest
-      - echo '[{"name":"app","imageUri":"484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest"}]' > imagedefinitions.json
+      - echo '[{"name":"shah-container","imageUri":"484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest"}]' > imagedefinitions.json
 
 artifacts:
   files:
