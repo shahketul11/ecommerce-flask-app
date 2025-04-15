@@ -14,7 +14,7 @@ phases:
     commands:
       - echo Pushing image...
       - docker push 484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest
-      - printf '[{\"name\":\"app\",\"imageUri\":\"484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest\"}]' > imagedefinitions.json
+      - echo '[{"name":"app","imageUri":"484907526019.dkr.ecr.us-east-1.amazonaws.com/ecommerce-app:latest"}]' > imagedefinitions.json
 
 artifacts:
   files: imagedefinitions.json
